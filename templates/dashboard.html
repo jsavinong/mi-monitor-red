@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Salud de Red (En vivo)</title>
+    <style>
+        /* Los estilos CSS son los mismos de antes */
+        body { font-family: sans-serif; background-color: #f4f4f9; color: #333; }
+        h1 { text-align: center; color: #444; }
+        .device-table { width: 80%; margin: 20px auto; border-collapse: collapse; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .device-table th, .device-table td { padding: 12px; border: 1px solid #ddd; text-align: left; }
+        .device-table th { background-color: #007bff; color: white; }
+        .status-online { color: green; font-weight: bold; }
+        .status-offline { color: red; font-weight: bold; }
+        .cpu-high { background-color: #fff3cd; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>Último Estado de los Dispositivos de Red (Actualización automática)</h1>
+    <table class="device-table">
+        <thead>
+            <tr>
+                <th>Hostname</th>
+                <th>Estado</th>
+                <th>Uso de CPU (%)</th>
+                <th>Alarmas Activas</th>
+                <th>Última Lectura</th>
+            </tr>
+        </thead>
+        <tbody id="device-data-body">
+            <tr>
+                <td colspan="5" style="text-align: center;">Cargando datos...</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <script>
+        // Esta función se encarga de ir a nuestra API, pedir los datos y reconstruir la tabla.
+        async function updateDashboard() {
+            console.log("Buscando datos nuevos...");
+            try {
+                // 1. LLAMADA A LA API: Usamos 'fetch' para llamar a la ruta que creamos en Flask.
+                const response = await fetch('/api/latest_status');
+                
+                // 2. CONVERSIÓN A JSON: Convertimos la respuesta del servidor a un formato que JS entienda.
+                const devices = await response.json();
+
+                // 3. MANIPULACIÓN DEL DOM: Buscamos el cuerpo de la tabla por su 'id'.
+                const tableBody = document.getElementById('device-data-body');
+                
+                // Limpiamos la tabla para poner los datos nuevos.
+                tableBody.innerHTML = ''; 
+
+                // 4. CREACIÓN DE FILAS: Por cada dispositivo que nos llegó de la API, creamos una fila (<tr>).
+                devices.forEach(device => {
+                    // Creamos una clase especial si la CPU está alta.
+                    const cpuClass = device.cpu_usage > 80 ? 'cpu-high' : '';
+                    
+                    const row = `
+                        <tr class="${cpuClass}">
+                            <td>${device.hostname}</td>
+                            <td class="status-${device.status}">${device.status}</td>
+                            <td>${device.cpu_usage}</td>
+                            <td>${device.active_alarms}</td>
+                            <td>${device.timestamp}</td>
+                        </tr>
+                    `;
+                    // Añadimos la fila nueva a la tabla.
+                    tableBody.innerHTML += row;
+                });
+
+            } catch (error) {
+                console.error("Error al actualizar el dashboard:", error);
+                const tableBody = document.getElementById('device-data-body');
+                tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: red;">Error al cargar los datos.</td></tr>';
+            }
+        }
+
+        // Esta línea se asegura de que nuestro código se ejecute solo cuando la página ha cargado completamente.
+        document.addEventListener('DOMContentLoaded', () => {
+            // Llamamos a la función una vez al cargar la página.
+            updateDashboard(); 
+            // Y luego, le decimos al navegador que la ejecute cada 5 segundos (5000 milisegundos).
+            setInterval(updateDashboard, 5000); 
+        });
+    </script>
+</body>
+</html>

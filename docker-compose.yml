@@ -1,0 +1,62 @@
+
+services:
+  # --- SERVICIO 1: LA BASE DE DATOS POSTGRESQL ---
+  database:
+    image: postgres:13-alpine # Usamos una imagen oficial y ligera de Postgres
+    container_name: postgres_db
+    environment:
+      # Estas variables las usará el contenedor de Postgres para autoconfigurarse
+      POSTGRES_USER: user_monitor
+      POSTGRES_PASSWORD: password_monitor
+      POSTGRES_DB: db_monitor
+    volumes:
+      # Esto "mapea" una carpeta en tu PC a una carpeta dentro del contenedor.
+      # Así, si apagas los contenedores, los datos de la BD no se pierden.
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      # Exponemos el puerto para poder conectar con una herramienta externa si quisiéramos
+      - "5432:5432"
+
+  # --- SERVICIO 2: LA API DEL DISPOSITIVO SIMULADO ---
+  device-api:
+    build: . # Le dice a Compose que construya una imagen desde el Dockerfile en esta carpeta
+    container_name: device_api_service
+    command: python api_dispositivo_realista.py # El comando que ejecutará este contenedor
+    ports:
+      - "5002:5002"
+
+  # --- SERVICIO 3: EL RECOLECTOR DE DATOS ---
+  collector:
+    build: .
+    container_name: collector_service
+    command: python monitor.py
+    environment:
+      # Le pasamos las credenciales de la BD a nuestro script Python
+      DB_HOST: database # Compose crea una red interna! El hostname es el nombre del servicio.
+      DB_NAME: db_monitor
+      DB_USER: user_monitor
+      DB_PASSWORD: password_monitor
+    depends_on:
+      # Le decimos que no inicie hasta que la BD y la API del dispositivo estén listas
+      - database
+      - device-api
+
+  # --- SERVICIO 4: EL DASHBOARD WEB ---
+  dashboard:
+    build: .
+    container_name: dashboard_service
+    command: gunicorn --bind 0.0.0.0:5001 app:app
+    ports:
+      - "5001:5001"
+    environment:
+      DB_HOST: database
+      DB_NAME: db_monitor
+      DB_USER: user_monitor
+      DB_PASSWORD: password_monitor
+    depends_on:
+      - database
+
+# Definimos el volumen que usará la base de datos
+volumes:
+  postgres_data:
