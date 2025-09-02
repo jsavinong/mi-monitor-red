@@ -2,7 +2,7 @@
 
 Un sistema simple de monitoreo de salud de red construido con Python, Flask, PostgreSQL y Docker. Este proyecto recolecta datos de dispositivos, los almacena y los presenta en un dashboard web en tiempo real.
 
-![Dashboard del Monitor de Red](ss monitor de red.png)
+![Dashboard del Monitor de Red](ss_monitor_de_red.png)
 
 ## 🛠️ Tecnologías Utilizadas
 
